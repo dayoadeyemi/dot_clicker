@@ -119,7 +119,7 @@ class Stage {
         window.requestAnimationFrame(() => this.run(now));
     }
     dotCount = 0;
-    level: number = 15;
+    level: number = 0;
     levelup() {
         this.level++;
         var n = this.level;
