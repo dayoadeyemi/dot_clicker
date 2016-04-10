@@ -80,10 +80,12 @@ var GameText = (function (_super) {
     __extends(GameText, _super);
     function GameText(stage, x, y, getText) {
         _super.call(this, stage, x, y, 1);
+        this.colour = 'black';
         this.getText = getText;
     }
     GameText.prototype.draw = function () {
         this.stage.ctx.font = "48px serif";
+        this.stage.ctx.fillStyle = this.colour;
         this.stage.ctx.fillText(this.getText(), this.position.x, this.position.y);
     };
     return GameText;
@@ -92,20 +94,27 @@ var Stage = (function () {
     function Stage(el) {
         var _this = this;
         this.children = [];
+        this.clicks = 0;
+        this.time = 8;
         this.dotCount = 0;
         this.level = 0;
+        this.gameover = false;
         this.canvas = document.createElement("canvas");
         this.ctx = this.canvas.getContext("2d");
         this.canvas.width = 512;
         this.canvas.height = 480;
         el.appendChild(this.canvas);
-        this.canvas.onclick = function (ev) {
+        this.canvas.onmousedown = function (ev) {
+            _this.clicks++;
+            _this.time -= 1;
             _this.children.forEach(function (gameObject) {
                 if (gameObject.isClicked(ev))
                     gameObject.click();
             });
         };
-        new GameText(this, 10, 50, function () { return 'level: ' + _this.level.toString(); });
+        new GameText(this, 10, 50, function () {
+            return ("level: " + _this.level.toString() + "\n             \tclicks: " + _this.clicks + " \t\n             \tTime: " + _this.time.toFixed(1));
+        });
     }
     Stage.prototype.run = function (then) {
         var _this = this;
@@ -118,6 +127,11 @@ var Stage = (function () {
                 this.children.splice(i, 1);
             }
         }
+        if (this.time > dt)
+            this.time = this.time - dt;
+        else if (!this.gameover) {
+            this.endGame();
+        }
         if (this.dotCount === 0) {
             this.levelup();
         }
@@ -125,9 +139,23 @@ var Stage = (function () {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.children.forEach(function (child) { return child.draw(); });
         window.requestAnimationFrame(function () { return _this.run(now); });
+        //setTimeout(() => this.run(now), 0);
+    };
+    Stage.prototype.endGame = function () {
+        var _this = this;
+        if (!this.gameover) {
+            this.time = 0;
+            this.gameover = true;
+            new GameText(this, 20, 120, function () { return _this.level === 21 ? 'WINNER' : 'GAME OVER'; });
+            this.canvas.onmousedown = function () { };
+            this.dotCount = -1;
+        }
     };
     Stage.prototype.levelup = function () {
+        if (this.gameover)
+            return;
         this.level++;
+        this.time += 5;
         var n = this.level;
         if (this.level <= 10) {
             new Dot(this, 500, 500, 70 / n + 10);
@@ -139,12 +167,12 @@ var Stage = (function () {
         }
         else if (this.level <= 20) {
             n -= 15;
-            new Dot(this, 100, 500, 25).velocity = new Vector(100 + n * 50, 0);
-            new Dot(this, 300, 500, 25).velocity = new Vector(100 + n * 50, 0);
-            new Dot(this, 500, 500, 25).velocity = new Vector(100 + n * 50, 0);
+            new Dot(this, 100, 500, 25).velocity = new Vector(100 + n * 70, 0);
+            new Dot(this, 300, 500, 25).velocity = new Vector(100 + n * 70, 0);
+            new Dot(this, 500, 500, 25).velocity = new Vector(100 + n * 70, 0);
         }
         else {
-            this.dotCount = -1;
+            this.endGame();
         }
     };
     return Stage;

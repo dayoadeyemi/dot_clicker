@@ -65,6 +65,7 @@ class MovableGameObject extends GameObject {
 }
 
 class GameText extends MovableGameObject {
+    colour = 'black';
     getText: () => string;
     constructor(stage: Stage, x, y, getText: () => string) {
         super(stage, x, y, 1);
@@ -72,6 +73,7 @@ class GameText extends MovableGameObject {
     }
     draw() {
         this.stage.ctx.font = "48px serif";
+        this.stage.ctx.fillStyle = this.colour;
         this.stage.ctx.fillText(this.getText(), this.position.x, this.position.y);
     }
 }
@@ -82,18 +84,25 @@ class Stage {
     height: number;
     width: number;
     children: Array<GameObject> = [];
+    clicks: number = 0;
+    time: number = 8;
     constructor(el: HTMLElement) {
         this.canvas = document.createElement("canvas");
         this.ctx = this.canvas.getContext("2d");
         this.canvas.width = 512;
         this.canvas.height = 480;
         el.appendChild(this.canvas);
-        this.canvas.onclick = (ev) => {
+        this.canvas.onmousedown = (ev) => {
+            this.clicks++;
+            this.time -= 1;
             this.children.forEach(gameObject => {
                 if (gameObject.isClicked(ev)) gameObject.click();
             })
         };
-        new GameText(this, 10, 50, () => 'level: ' + this.level.toString());
+        new GameText(this, 10, 50, () =>
+            `level: ${this.level.toString()}
+             \tclicks: ${this.clicks} \t
+             \tTime: ${this.time.toFixed(1)}`);
     }
     run(then: number) {
         var now = Date.now();
@@ -108,6 +117,11 @@ class Stage {
             }
         }
 
+        if (this.time > dt) this.time = this.time - dt;
+        else if (!this.gameover) {
+            this.endGame();
+        }
+
         if (this.dotCount === 0) {
             this.levelup();
         }
@@ -117,11 +131,24 @@ class Stage {
         this.children.forEach(child => child.draw());
  
         window.requestAnimationFrame(() => this.run(now));
+        //setTimeout(() => this.run(now), 0);
     }
-    dotCount = 0;
+    dotCount: number = 0;
     level: number = 0;
+    gameover = false;
+    endGame() {
+        if (!this.gameover) {
+            this.time = 0;
+            this.gameover = true;
+            new GameText(this, 20, 120, () => this.level === 21 ? 'WINNER' : 'GAME OVER');
+            this.canvas.onmousedown = () => { }
+            this.dotCount = -1;
+        }
+    }
     levelup() {
+        if (this.gameover) return;
         this.level++;
+        this.time += 5;
         var n = this.level;
         if (this.level <= 10) {
             new Dot(this, 500, 500, 70 / n + 10);
@@ -131,11 +158,11 @@ class Stage {
             new Dot(this, 300, 500, 40);
         } else if (this.level <= 20) {
             n -= 15;
-            new Dot(this, 100, 500, 25).velocity = new Vector(100 + n * 50, 0);
-            new Dot(this, 300, 500, 25).velocity = new Vector(100 + n * 50, 0);
-            new Dot(this, 500, 500, 25).velocity = new Vector(100 + n * 50, 0);
+            new Dot(this, 100, 500, 25).velocity = new Vector(100 + n * 70, 0);
+            new Dot(this, 300, 500, 25).velocity = new Vector(100 + n * 70, 0);
+            new Dot(this, 500, 500, 25).velocity = new Vector(100 + n * 70, 0);
         } else {
-            this.dotCount = -1;
+            this.endGame();
         }
     }
 }
