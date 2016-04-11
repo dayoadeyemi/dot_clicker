@@ -1,0 +1,6 @@
+C:\Users\dayo\Documents\GitHub\the game where you just click a dot\dot_clicker\dot_clicker\bin\dot_clicker.dll.config
+C:\Users\dayo\Documents\GitHub\the game where you just click a dot\dot_clicker\dot_clicker\bin\dot_clicker.dll
+C:\Users\dayo\Documents\GitHub\the game where you just click a dot\dot_clicker\dot_clicker\bin\dot_clicker.pdb
+C:\Users\dayo\Documents\GitHub\the game where you just click a dot\dot_clicker\dot_clicker\obj\Debug\dot_clicker.csprojResolveAssemblyReference.cache
+C:\Users\dayo\Documents\GitHub\the game where you just click a dot\dot_clicker\dot_clicker\obj\Debug\dot_clicker.dll
+C:\Users\dayo\Documents\GitHub\the game where you just click a dot\dot_clicker\dot_clicker\obj\Debug\dot_clicker.pdb
