@@ -1,10 +1,22 @@
 /// <reference path="jquery.d.ts" />
+'use strict';
 var __extends = (this && this.__extends) || function (d, b) {
     for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
     function __() { this.constructor = d; }
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var FPS = 30;
+function randomInt(min, max) {
+    return Math.random() * (max - min) + min;
+}
+function bound(num, min, max) {
+    if (num < min)
+        return min;
+    else if (num > max)
+        return max;
+    else
+        return num;
+}
 var GameObject = (function () {
     function GameObject(stage) {
         this.destroy = false;
@@ -25,6 +37,7 @@ var Vector = (function () {
     function Vector(x, y) {
         var _this = this;
         this.add = function (v) { return new Vector(v.x + _this.x, v.y + _this.y); };
+        this.sub = function (v) { return new Vector(-v.x + _this.x, -v.y + _this.y); };
         this.multiply = function (a) { return new Vector(a * _this.x, a * _this.y); };
         this.xform = function (m) { return new Vector(m.x1 * _this.x + m.y1 * _this.y, m.x2 * _this.x + m.y2 * _this.y); };
         this.x = x;
@@ -41,6 +54,13 @@ var Vector = (function () {
     Object.defineProperty(Vector.prototype, "length", {
         get: function () {
             return Math.sqrt(this.x * this.x + this.y * this.y);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Vector.prototype, "normal", {
+        get: function () {
+            return this.multiply(1 / this.length);
         },
         enumerable: true,
         configurable: true
@@ -72,7 +92,7 @@ var MovableGameObject = (function (_super) {
         _super.prototype.update.call(this, dt);
         this.position = this.position.add(this.velocity.multiply(dt));
         this.velocity = this.velocity.add(this.acceleration.multiply(dt));
-        this.position = new Vector((this.position.x + this.stage.width) % this.stage.width, (this.position.y + this.stage.height) % this.stage.height);
+        this.position = new Vector(bound(this.position.x, this.radius, this.stage.width - this.radius), bound(this.position.y, this.radius, this.stage.height - this.radius));
     };
     return MovableGameObject;
 }(GameObject));
@@ -96,6 +116,7 @@ var Stage = (function () {
         this.children = [];
         this.clicks = 0;
         this.time = 8;
+        this.mouse = new Vector(0, 0);
         this.dotCount = 0;
         this.level = 0;
         this.gameover = false;
@@ -103,6 +124,8 @@ var Stage = (function () {
         this.ctx = this.canvas.getContext("2d");
         this.canvas.width = 512;
         this.canvas.height = 480;
+        this.width = this.ctx.canvas.width = window.innerWidth;
+        this.height = this.ctx.canvas.height = window.innerHeight;
         el.appendChild(this.canvas);
         this.canvas.onmousedown = function (ev) {
             _this.clicks++;
@@ -111,6 +134,9 @@ var Stage = (function () {
                 if (gameObject.isClicked(ev))
                     gameObject.click();
             });
+        };
+        this.canvas.onmousemove = function (ev) {
+            _this.mouse = new Vector(ev.pageX, ev.pageY);
         };
         new GameText(this, 10, 50, function () {
             return ("level: " + _this.level.toString() + "\n             \tclicks: " + _this.clicks + " \t\n             \tTime: " + _this.time.toFixed(1));
@@ -158,18 +184,10 @@ var Stage = (function () {
         this.time += 5;
         var n = this.level;
         if (this.level <= 10) {
-            new Dot(this, 500, 500, 70 / n + 10);
-        }
-        else if (this.level <= 15) {
-            n -= 10;
-            new Dot(this, 100, 500, 70 / n + 10);
-            new Dot(this, 300, 500, 40);
-        }
-        else if (this.level <= 20) {
-            n -= 15;
-            new Dot(this, 100, 500, 25).velocity = new Vector(100 + n * 70, 0);
-            new Dot(this, 300, 500, 25).velocity = new Vector(100 + n * 70, 0);
-            new Dot(this, 500, 500, 25).velocity = new Vector(100 + n * 70, 0);
+            //new Dot(this, Green);
+            // new Dot(this, Red);
+            // new Dot(this, Blue);
+            new Dot(this, Black);
         }
         else {
             this.endGame();
@@ -177,13 +195,29 @@ var Stage = (function () {
     };
     return Stage;
 }());
+var DotConfig = (function () {
+    function DotConfig(options) {
+        this.speed = 150;
+        this.radius = 40;
+        for (var option in options)
+            this[option] = options[option];
+    }
+    return DotConfig;
+}());
+var Green = new DotConfig({ colour: 'green', randomDir: 1.4, speed: 250 });
+var Red = new DotConfig({ colour: 'red', speed: 0, runAway: 100 });
+var Blue = new DotConfig({ colour: 'blue', speed: 0, hideIn: 0.8 });
+var Black = new DotConfig({ colour: 'black', speed: 0, teleportIn: 2.2, radius: 30 });
 var Dot = (function (_super) {
     __extends(Dot, _super);
-    function Dot(stage, x, y, r) {
-        _super.call(this, stage, x, y, r);
-        this.colour = 'green';
+    function Dot(stage, config) {
+        _super.call(this, stage, randomInt(config.radius, stage.width), randomInt(config.radius, stage.height), config.radius);
+        this.config = config;
+        this.hideIn = config.hideIn;
+        this.teleportIn = config.teleportIn;
+        this.colour = config.colour;
+        this.velocity = new Vector(config.speed, 0);
         stage.dotCount++;
-        this.velocity = new Vector(150, 0);
     }
     Dot.prototype.isClicked = function (ev) {
         return this.position.add(new Vector(-ev.pageX, -ev.pageY)).length < this.radius;
@@ -194,11 +228,43 @@ var Dot = (function (_super) {
         ;
     };
     Dot.prototype.update = function (dt) {
-        var rotate = Matrix.rot((Math.random() - 0.5) * 0.9);
-        this.velocity = this.velocity.xform(rotate);
+        var config = this.config;
+        if (config.randomDir) {
+            this.velocity = this.velocity.xform(Matrix.rot((Math.random() - 0.5) * config.randomDir));
+        }
+        if (config.runAway) {
+            var mouseDiff = this.position.sub(this.stage.mouse);
+            var speed = config.runAway / (this.radius / 4 + mouseDiff.length);
+            this.velocity = mouseDiff.normal.multiply(speed * config.runAway);
+        }
+        if (config.hideIn) {
+            if (this.hideIn > 0) {
+                this.hideIn -= dt;
+                if (Math.random() < 0.75) {
+                    this.radius++;
+                }
+                else {
+                    this.radius--;
+                }
+                this.radius = bound(this.radius, config.radius, 2 * config.radius);
+            }
+            else {
+                this.colour = 'white';
+            }
+        }
+        if (config.teleportIn) {
+            if (this.teleportIn > 0) {
+                this.teleportIn -= dt;
+            }
+            else {
+                this.teleportIn = this.config.teleportIn;
+                this.position = new Vector(randomInt(this.radius, this.stage.width), randomInt(this.radius, this.stage.height));
+            }
+        }
         _super.prototype.update.call(this, dt);
     };
     Dot.prototype.draw = function () {
+        var config = this.config;
         this.stage.ctx.beginPath();
         this.stage.ctx.arc(this.position.x, this.position.y, this.radius, 0, 2 * Math.PI, false);
         this.stage.ctx.fillStyle = this.colour;
@@ -219,4 +285,3 @@ window.onload = function () {
     stage.levelup();
     stage.run(Date.now());
 };
-//# sourceMappingURL=app.js.map
